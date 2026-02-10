@@ -63,14 +63,27 @@ class Blockchain:
     def add_node(self, address):
         parsed_url = urlparse(address)
         self.nodes.add(parsed_url.netloc)
-    
+   # Updated replace_chain Function
+ 
     def replace_chain(self):
-        pass
-        # Create a function to replace the chain by the longest chain if needed
-        # WRITE YOUR CODE HERE AND REMOVE "pass"
-        ###################################
-        
-        ###################################
+        network = self.nodes
+        longest_chain = None
+        max_length = len(self.chain)
+
+        for node in network:
+           response = requests.get(f'http://{node}/get_chain')
+           if response.status_code == 200:
+               length = response.json()['length']
+               chain = response.json()['chain']
+               if length > max_length and self.is_chain_valid(chain):
+                   max_length = length
+                   longest_chain = chain
+
+        if longest_chain:
+           self.chain = longest_chain
+           return True
+    
+        return False
 
 #Mining the blockchain
 
@@ -93,26 +106,34 @@ blockchain = Blockchain()
 
 @app.route('/mine_block', methods= ['GET'])
 def mine_block():
-    pass
-    #Create a route to mine a block
-    # WRITE YOUR CODE HERE AND REMOVE "pass"
-    ###################################
-        
-    ###################################
+    previous_block = blockchain.get_previous_block()
+    previous_proof = previous_block['proof']
+    proof = blockchain.proof_of_work(previous_proof)
+    previous_hash = blockchain.hash(previous_block)
 
+    block = blockchain.create_block(proof, previous_hash)
+
+    response = {
+        'message': 'Congratulations, you just mined a block!',
+        'index': block['index'],
+        'timestamp': block['timestamp'],
+        'proof': block['proof'],
+        'previous_hash': block['previous_hash']
+    }
+    return jsonify(response), 200
 
 
 
 #Get the full blockchain
 
-@app.route('/get_chain', methods= ['GET'])
+@app.route('/get_chain', methods=['GET'])
 def get_chain():
-    pass
-    #Create a route to get the blockchain
-    # WRITE YOUR CODE HERE AND REMOVE "pass"
-    ###################################
-        
-    ###################################
+    response = {
+        'chain': blockchain.chain,
+        'length': len(blockchain.chain)
+    }
+    return jsonify(response), 200
+
     
 
 #Checking if blockchain is valid
@@ -151,16 +172,8 @@ def connect_node():
     ###################################
 
 
-#Replacing the chain with the longest chain]
-@app.route('/replace_chain', methods= ['GET'])
-def replace_chain():
-    pass
-    #Create a route to replace the chain by the longest chain if needed
-    # WRITE YOUR CODE HERE AND REMOVE "pass"
-    ###################################
-        
-    ###################################
+
 
 
 #Running the App
-app.run(host= '0.0.0.0', port= 5000)
+app.run(host='0.0.0.0', port=5000, debug=True)
